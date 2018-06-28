@@ -1,12 +1,16 @@
 #!/usr/bin/python
+# -*- coding: utf-8 -*-
 # Version - 0.2
 # Purpose - MongoDB Process Checker
 # Author  - Vinoth Kanna RS / Mydbops IT Solutions
 # Website - www.mydbops.com   Email - mysqlsupport@mydbops.com
 
-import pymongo, argparse, getpass, urllib, commands, sys, time, re
+import pymongo, argparse, getpass, urllib, commands, sys, time, re, json
 from prettytable import PrettyTable
 from bson.json_util import dumps
+from itertools import islice
+reload(sys)
+sys.setdefaultencoding('utf8')
 
 parser = argparse.ArgumentParser(description='Mongo Process Checker', formatter_class=argparse.RawDescriptionHelpFormatter)
 parser.add_argument('-H', '--host', action='store', type=str, dest='mongo_host', default='localhost', help='Input Hostname, Default: localhost')
@@ -168,17 +172,18 @@ def repl_stat():
         if sep.find('behind') != -1:
             hosts = hosts + ', Lag: ' + sep.split()[0] + ' s)  '
     hosts = hosts.strip() + ']'
-    print (r_stat + ''.rjust(7) + hosts + '\n')
+    print (r_stat + ''.rjust(7) + hosts)
 
 
 def get_proc():
 
     out = PrettyTable(['Op-ID', 'Host', 'Collection', 'Op', 'Duration', 'Query'])
+    out.border = False
+    out.adding_width=0
     track = 1
     out.align = 'l'
 
-    for proc in fetch.get('inprog', ''):
-
+    for proc in islice(fetch.get('inprog', ''),0,5):
         opid = proc.get('opid', '')
         host = proc.get('client', '').split(':')
         ns = proc.get('ns', '')
@@ -186,8 +191,10 @@ def get_proc():
         ts = proc.get('microsecs_running', 0) / (1000 * 1.00)
         kt = ts / 1000
         pt = read_time(ts)
-        qry = proc.get('query', '')
-        qry = dumps(qry)
+        qry = dumps(proc.get('command', ''))
+        #print(dumps(proc.get('command', '')))
+        #sys.exit()
+        #qry = dumps(qry)
         msg = proc.get('msg', '')
         wfl = proc.get('waitingForLock', '')
 
@@ -213,8 +220,8 @@ def get_proc():
                         admin.command('killOp', op=opid)
 
     print ('\033c')
-    print ('Timestamp : ' + time.strftime('%Y-%m-%d %H:%M:%S') + '[Refresh Int : '.rjust(w1) + str(args.refresh_rate) + ' Sec]' + inf + '\n')
-    print ('Connected To : ' + re.sub(args.mongo_password, r'****', uri) + hd.rjust(w2) + '\n')
+    print ('Timestamp : ' + time.strftime('%Y-%m-%d %H:%M:%S') + '[Refresh Int : '.rjust(w1) + str(args.refresh_rate) + ' Sec]' + inf)
+    print ('Connected To : ' + re.sub(args.mongo_password, r'****', uri) + hd.rjust(w2))
 
     if args.repl is True:
         repl_stat()
@@ -269,9 +276,9 @@ for tf in args.mongo_host.split('.')[-2:]:
     else:
         fn = fn + '-' + tf
 
-kq_fname = fn + '_killed' + time.strftime('_%d-%b_%H-%M.txt')
+kq_fname = fn + '_killed' + time.strftime('.log')
 
-wq_fname = fn + '_queries' + time.strftime('_%d-%b_%H-%M.txt')
+wq_fname = fn + '_queries' + time.strftime('.log')
 
 header = 'Timestamp           : OpID      Host       NS          Op       Duration     Query\n'
 
@@ -294,7 +301,7 @@ for i in xrange(sys.maxint):
         rs_stat()
         get_proc()
 
-    except pymongo.errors.PyMongoError, e:
+    except pymongo.errors.PyMongoError:
         print ('\nConnecting To : ' + uri + '\n')
         print (time.strftime('%Y-%m-%d %H:%M:%S') + ' : MongoDB Exception - %s\n' % e)
         sys.exit(1)
