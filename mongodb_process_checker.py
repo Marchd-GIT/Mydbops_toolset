@@ -4,6 +4,10 @@
 # Purpose - MongoDB Process Checker
 # Author  - Vinoth Kanna RS / Mydbops IT Solutions
 # Website - www.mydbops.com   Email - mysqlsupport@mydbops.com
+#  
+# for mongo 3.6 
+# run command example 
+# python mongodb_process_checker.py -H localhost  -u login  -p pass  -r
 
 import pymongo, argparse, getpass, urllib, commands, sys, time, re, json
 from prettytable import PrettyTable
